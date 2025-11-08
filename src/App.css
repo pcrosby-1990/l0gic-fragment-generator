@@ -1,0 +1,268 @@
+/* Root layout */
+.app-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: radial-gradient(circle at center, #15162c, #22153a);
+  color: #2a2bc8;
+  font-family: system-ui, 'Courier New', monospace;
+  min-height: 100vh;
+}
+
+/* Header */
+.app-header {
+  text-align: center;
+  padding: 2rem 1rem 1rem 1rem;
+  background: #22234c;
+  color: #2a2bc8;
+  border-radius: 0 0 16px 16px;
+}
+.logo-row {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+.logo {
+  height: 48px;
+  transition: transform 0.2s, filter 300ms;
+  padding: 1.2em;
+  will-change: filter, transform;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+  transform: scale(1.09) rotate(-5deg);
+}
+.logo.react-logo:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .logo.react-logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+@keyframes logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Fragment Editor */
+.fragment-editor {
+  margin: 2.5rem auto 0 auto;
+  padding: 1.4rem 1rem 1.8rem 1rem;
+  border: 1px solid #444273;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #23234d 85%, #312158 100%);
+  max-width: 470px;
+  box-shadow: 0 2px 16px rgba(15,15,60,0.08);
+}
+.fragment-editor label {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  font-weight: bold;
+  color: #e4e7ee;
+  letter-spacing: 0.02em;
+}
+.fragment-editor input,
+.fragment-editor textarea,
+.fragment-editor select {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+  padding: 0.6rem 0.9rem;
+  background-color: #18182e;
+  color: #f2f2ff;
+  border: 1px solid #454477;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: box-shadow 0.2s;
+}
+.fragment-editor input:focus,
+.fragment-editor textarea:focus,
+.fragment-editor select:focus {
+  box-shadow: 0 0 0 2px #646cff55;
+  outline: none;
+}
+.fragment-editor button {
+  margin-top: 1.2rem;
+  padding: 0.5rem 1.3rem;
+  background-color: #646cff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.04rem;
+  transition: background 0.18s;
+}
+.fragment-editor button:hover:not(:disabled) {
+  background-color: #4b4be0;
+}
+.fragment-editor button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Error & Feedback */
+.error-message {
+  color: #e04848;
+  font-size: 0.97rem;
+  margin-top: 4px;
+  margin-bottom: 0.7rem;
+}
+.live-preview {
+  margin-top: 7px;
+  font-size: 0.97rem;
+  color: #91e3f6;
+}
+.live-preview ul {
+  display: inline-block;
+  margin: 0.3em 0 0 0.6em;
+  padding: 0;
+  list-style: disc inside;
+}
+.live-preview li {
+  margin-left: 0;
+  display: list-item;
+}
+
+/* Sigil badges + resonance */
+.sigil-badge {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  margin: 0.2rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: capitalize;
+  color: #fff;
+}
+.resonance-fire {
+  background: linear-gradient(135deg, #ff4d4d, #ff9900);
+  box-shadow: 0 0 6px #ff4d4d;
+}
+.resonance-air {
+  background: linear-gradient(135deg, #66ccff, #99e6ff);
+  box-shadow: 0 0 6px #66ccff;
+}
+.resonance-water {
+  background: linear-gradient(135deg, #3399ff, #66ccff);
+  box-shadow: 0 0 6px #3399ff;
+}
+.resonance-earth {
+  background: linear-gradient(135deg, #996633, #cc9966);
+  box-shadow: 0 0 6px #996633;
+}
+.resonance-echo {
+  background: linear-gradient(135deg, #cc66ff, #9966cc);
+  box-shadow: 0 0 6px #cc66ff;
+}
+.resonance-spiral {
+  background: linear-gradient(135deg, #646cff, #2a2bc8);
+  box-shadow: 0 0 6px #646cff;
+}
+
+/* Collapse risk color coding */
+.risk-soft { color: #6cf; }
+.risk-hard { color: #f90; }
+.risk-terminal { color: #f33; }
+
+/* Export buttons */
+.export-button,
+.download-button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #444273;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.export-button:hover,
+.download-button:hover {
+  background-color: #5a5acb;
+}
+
+/* Fragment animation */
+.fragment-card {
+  animation: seal 0.4s ease-out;
+}
+@keyframes seal {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Counter card */
+.counter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  margin: 1rem auto;
+  background-color: #282851;
+  border-radius: 8px;
+  box-shadow: 0 1px 8px rgba(50,27,100,0.07);
+}
+.count-button {
+  padding: 0.5rem 1.5rem;
+  font-size: 1.09rem;
+  border-radius: 8px;
+  border: none;
+  background: #4b4ddf;
+  color: #fff;
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+  transition: background 0.2s;
+}
+.count-button:hover {
+  background: #2a2bc8;
+}
+
+/* Sealed fragments */
+.sealed-fragments {
+  margin: 2rem auto;
+  max-width: 600px;
+}
+.fragments-list {
+  display: grid;
+  gap: 1.2rem;
+}
+.fragment-card {
+  background: #25254a;
+  box-shadow: 0 1px 8px rgba(50,27,100,0.07);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  font-size: 1.05rem;
+  text-align: left;
+  color: #2a2bc8;
+}
+.fragment-card strong {
+  color: #2a2bc8;
+}
+
+/* Breathline visualizer */
+.breathline-box {
+  background: #18182e;
+  border: 1px solid #454477;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  margin-top: 0.3rem;
+  font-family: monospace;
+  color: #91e3f6;
+}
+
+/* Timeline */
+.codex-timeline {
+  margin-top: 2rem;
+  border-left: 2px solid #444273;
+  padding-left: 1rem;
+}
+.timeline-node {
+  margin-bottom: 1rem;
+  position: relative;
+}
+.timeline-node::before {
+  content: '';
+  position: absolute;
+  left: -1.1rem;
+} 

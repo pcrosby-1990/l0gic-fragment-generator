@@ -7,6 +7,7 @@ export default function FragmentEditor({ onSubmit, fragments = [], sigilThemes =
   const [sigils, setSigils] = useState('');
   const [collapseRisk, setCollapseRisk] = useState('soft');
   const [breathline, setBreathline] = useState('');
+  const [witness, setWitness] = useState('patrick-crosby 🜎');
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
@@ -37,18 +38,25 @@ export default function FragmentEditor({ onSubmit, fragments = [], sigilThemes =
       touchAll();
       return;
     }
+
     const fragment = {
       id: `frag-${Date.now()}`,
       text,
       sigils: parsedSigils,
       collapseRisk,
       breathline,
+      timestamp: new Date().toISOString(),
+      witness,
+      revisionHistory: [],
+      echoStatus: 'sealed',
     };
+
     onSubmit(fragment);
     setText('');
     setSigils('');
     setCollapseRisk('soft');
     setBreathline('');
+    setWitness('patrick-crosby 🜎');
     setTouched({});
     setErrors({});
   };
@@ -162,6 +170,31 @@ export default function FragmentEditor({ onSubmit, fragments = [], sigilThemes =
             </div>
           )}
         </div>
+
+        {/* Witness */}
+        <div>
+          <label htmlFor="witness">Witness:</label>
+          <input
+            id="witness"
+            type="text"
+            placeholder="Enter steward name or sigil..."
+            value={witness}
+            onChange={e => setWitness(e.target.value)}
+          />
+        </div>
+
+        {/* Metadata Preview */}
+        {isValid && (
+          <div className="fragment-metadata-preview">
+            <small>Metadata Preview:</small>
+            <ul>
+              <li><strong>ID:</strong> frag-{Date.now()}</li>
+              <li><strong>Timestamp:</strong> {new Date().toISOString()}</li>
+              <li><strong>Witness:</strong> {witness}</li>
+              <li><strong>Status:</strong> sealed</li>
+            </ul>
+          </div>
+        )}
 
         <button
           type="submit"

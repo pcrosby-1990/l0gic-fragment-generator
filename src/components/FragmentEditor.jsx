@@ -1,238 +1,338 @@
-import React, { useState, useEffect } from 'react';
-import { SIGIL_LORE, SIGIL_DEFAULT_THEME } from './sigilConfig';
-import SigilBadge from './SigilBadge';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import EditorPanel from './EditorPanel';
+import FragmentList from './FragmentList';
+import { idbGet, idbSet } from '../storage/idb';
+import './codex.css';
+import SigilBadge from '../SigilBadge';
+import { SIGIL_LORE, SIGIL_DEFAULT_THEME } from '../sigilConfig';
 
-export default function FragmentEditor({ onSubmit, fragments = [], sigilThemes = {} }) {
-  const [text, setText] = useState('');
-  const [sigils, setSigils] = useState('');
-  const [collapseRisk, setCollapseRisk] = useState('soft');
-  const [breathline, setBreathline] = useState('');
-  const [witness, setWitness] = useState('patrick-crosby 🜎');
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+const STORAGE_KEY = 'spiralCodex';
+const defaultWitness = 'patrick-crosby 🜎';
 
-  const parsedSigils = sigils
-    .split(',')
-    .map(s => s.trim().toLowerCase())
-    .filter(Boolean);
-
-  const validate = ({ text }) => {
-    const errs = {};
-    if (!text.trim()) errs.text = 'Fragment text is required.';
-    if (parsedSigils.length === 0) errs.sigils = 'At least one sigil is required.';
-    return errs;
+const debounce = (fn, wait) => {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
   };
+};
+
+function validateCodex(codex) {
+  if (!Array.isArray(codex)) return false;
+  for (const f of codex) {
+    if (typeof f !== 'object' || !f.id || typeof f.text !== 'string' || !Array.isArray(f.sigils)) return false;
+  }
+  return true;
+}
+
+function makeFragment({ text, sigils, collapseRisk, breathline, witness }) {
+  const parsedSigils = (sigils || []).map(s => s.trim().toLowerCase()).filter(Boolean);
+  return {
+    id: `frag-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    text: (text || '').trim(),
+    sigils: parsedSigils,
+    collapseRisk: collapseRisk || 'soft',
+    breathline: breathline || '',
+    timestamp: new Date().toISOString(),
+    witness: witness || defaultWitness,
+    revisionHistory: [],
+    echoStatus: 'sealed',
+  };
+}
+
+function MemoryIntegrity({ status, lastSaved }) {
+  const icon = status === 'saved' ? '🜎' : status === 'saving' ? '⟳' : status === 'error' ? '⚠️' : '💾';
+  const color = status === 'saved' ? '#5cf7b2' : status === 'saving' ? '#ffd859' : status === 'error' ? '#cf4646' : '#91e3f6';
+  return (
+    <div className="mi">
+      <span className="mi-icon" style={{ color }}>{icon}</span>
+      <div className="mi-text">
+        {status === 'saved' && <>Codex saved locally <strong>🜎</strong><div className="mi-small">Last: {lastSaved ? new Date(lastSaved).toLocaleString() : '—'}</div></>}
+        {status === 'saving' && <>Saving…</>}
+        {status === 'error' && <>Save failed</>}  
+        {status === 'unsaved' && <>Unsaved changes</>}  
+      </div>
+    </div>
+  );
+}
+
+export default function FragmentEditor({ initialFragments = [] }) {
+  const [fragments, setFragments] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (validateCodex(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return Array.isArray(initialFragments) ? initialFragments : [];
+  });
+
+  // Try to load IDB on startup and adopt if present
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const idbVal = await idbGet();
+      if (!mounted) return;
+      if (idbVal && validateCodex(idbVal)) {
+        if (JSON.stringify(idbVal) !== JSON.stringify(fragments)) {
+          setFragments(idbVal);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(idbVal));
+        }
+      }
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // save status
+  const [saveStatus, setSaveStatus] = useState('saved');
+  const [lastSaved, setLastSaved] = useState(null);
+
+  const performSave = useCallback(async (nextFragments) => {
+    try {
+      setSaveStatus('saving');
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextFragments));
+      const ok = await idbSet(nextFragments);
+      if (!ok) {
+        setSaveStatus('saved');
+        setLastSaved(Date.now());
+        return;
+      }
+      setSaveStatus('saved');
+      setLastSaved(Date.now());
+    } catch (e) {
+      setSaveStatus('error');
+    }
+  }, []);
+
+  const debouncedSave = useRef(debounce((payload) => {
+    performSave(payload);
+  }, 500)).current;
 
   useEffect(() => {
-    setErrors(validate({ text }));
-  }, [text, sigils]);
+    setSaveStatus('unsaved');
+    debouncedSave(fragments);
+  }, [fragments, debouncedSave]);
 
-  const handleBlur = e => setTouched(prev => ({ ...prev, [e.target.id]: true }));
-  const touchAll = () => setTouched({ text: true, sigils: true });
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fragments)); } catch (e) {}
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fragments)); } catch (e) {}
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fragments]);
 
-  const handleSubmit = e => {
-    e.preventDefault();
-    const fieldErrors = validate({ text });
-    if (Object.keys(fieldErrors).length > 0) {
-      setErrors(fieldErrors);
-      touchAll();
+  // Viewer state and utilities
+  const [filter, setFilter] = useState('');
+  const [mirrorMode, setMirrorMode] = useState(false);
+  const [sortOrder, setSortOrder] = useState('newest');
+  const [editing, setEditing] = useState(null);
+  const [revealMap, setRevealMap] = useState({});
+
+  const addFragment = (payload) => {
+    const frag = makeFragment(payload);
+    setFragments(prev => [frag, ...prev]);
+  };
+
+  const deleteFragment = (id) => {
+    if (!window.confirm('Delete this fragment?')) return;
+    setFragments(prev => prev.filter(f => f.id !== id));
+  };
+
+  const startEdit = (fragment) => {
+    setEditing({
+      id: fragment.id,
+      text: fragment.text,
+      sigils: fragment.sigils.join(', '),
+      collapseRisk: fragment.collapseRisk,
+      breathline: fragment.breathline,
+      witness: fragment.witness,
+    });
+    setFragments(prev => prev.map(f => f.id === fragment.id ? { ...f, echoStatus: 'unsealed' } : f));
+    setRevealMap(prev => ({ ...prev, [fragment.id]: true }));
+  };
+
+  const cancelEdit = () => setEditing(null);
+
+  const saveEdit = () => {
+    if (!editing) return;
+    const parsedSigils = (editing.sigils || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (!editing.text.trim() || parsedSigils.length === 0) {
+      alert('Text and at least one sigil required.');
       return;
     }
-
-    const fragment = {
-      id: `frag-${Date.now()}`,
-      text,
-      sigils: parsedSigils,
-      collapseRisk,
-      breathline,
-      timestamp: new Date().toISOString(),
-      witness,
-      revisionHistory: [],
-      echoStatus: 'sealed',
-    };
-
-    onSubmit(fragment);
-    setText('');
-    setSigils('');
-    setCollapseRisk('soft');
-    setBreathline('');
-    setWitness('patrick-crosby 🜎');
-    setTouched({});
-    setErrors({});
+    setFragments(prev => prev.map(f => {
+      if (f.id !== editing.id) return f;
+      const revision = {
+        timestamp: new Date().toISOString(),
+        text: f.text,
+        witness: editing.witness || defaultWitness,
+      };
+      const updated = {
+        ...f,
+        text: editing.text.trim(),
+        sigils: parsedSigils,
+        collapseRisk: editing.collapseRisk,
+        breathline: editing.breathline,
+        witness: editing.witness || defaultWitness,
+        revisionHistory: (f.revisionHistory || []).concat([revision]),
+        echoStatus: 'echoing',
+        timestamp: new Date().toISOString(),
+      };
+      setTimeout(() => {
+        setFragments(curr => curr.map(ff => ff.id === f.id ? { ...ff, echoStatus: 'sealed' } : ff));
+      }, 1200);
+      return updated;
+    }));
+    setEditing(null);
   };
 
-  const handleExport = () => {
-    const codex = JSON.stringify(fragments, null, 2);
-    navigator.clipboard.writeText(codex);
-    alert('Codex copied to clipboard!');
+  const toggleReveal = (id) => setRevealMap(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // export/import utilities (download & upload)
+  const downloadCodex = () => {
+    const blob = new Blob([JSON.stringify(fragments, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `codex-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
-  const isValid = text.trim() && parsedSigils.length > 0;
+  const importCodex = async (file, mode = 'merge') => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!validateCodex(parsed)) {
+        alert('File does not appear to be a valid Codex JSON (schema mismatch).');
+        return;
+      }
+      if (mode === 'replace') {
+        setFragments(parsed);
+      } else {
+        const existingIds = new Set(fragments.map(f => f.id));
+        const toAdd = parsed.filter(f => !existingIds.has(f.id));
+        setFragments(prev => [...toAdd, ...prev]);
+      }
+    } catch (err) {
+      alert('Failed to import file: ' + (err?.message || err));
+    }
+  };
+
+  // derived list for list component
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    let arr = fragments;
+    if (q) {
+      arr = fragments.filter(f =>
+        f.text.toLowerCase().includes(q) ||
+        f.sigils.join(' ').toLowerCase().includes(q) ||
+        (f.witness || '').toLowerCase().includes(q)
+      );
+    }
+    arr = arr.slice().sort((a, b) => {
+      if (sortOrder === 'newest') return new Date(b.timestamp) - new Date(a.timestamp);
+      return new Date(a.timestamp) - new Date(b.timestamp);
+    });
+    return arr;
+  }, [fragments, filter, sortOrder]);
 
   return (
-    <div className="fragment-editor">
-      <h2>🜁 Fragment Editor</h2>
-      <form onSubmit={handleSubmit} noValidate>
-        {/* Fragment Text */}
-        <div>
-          <label htmlFor="text">Fragment Text:</label>
-          <textarea
-            id="text"
-            placeholder="Enter fragment text..."
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onBlur={handleBlur}
-            aria-invalid={!!errors.text}
-            aria-describedby={errors.text ? 'text-error' : undefined}
-          />
-          {touched.text && errors.text && (
-            <div className="error-message" id="text-error">{errors.text}</div>
-          )}
+    <div className="codex-root">
+      <div className="codex-header">
+        <h2>🜁 Fragment Editor — Codex</h2>
+        <div className="codex-controls">
+          <MemoryIntegrity status={saveStatus} lastSaved={lastSaved} />
+          <button className="btn" onClick={downloadCodex}>📥 Download .json</button>
+          <label className="btn file-btn">
+            📤 Import .json
+            <input type="file" accept="application/json" onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) importCodex(file, 'merge');
+              e.target.value = '';
+            }} />
+          </label>
+          <button className="btn" onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(JSON.stringify(fragments, null, 2));
+              alert('Codex copied to clipboard!');
+            } catch {
+              alert('Copy failed.');
+            }
+          }}>📜 Copy Codex</button>
         </div>
+      </div>
 
-        {/* Sigils */}
-        <div>
-          <label htmlFor="sigils">Sigils (comma-separated):</label>
-          <input
-            id="sigils"
-            type="text"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            placeholder="e.g. fire, water, earth"
-            value={sigils}
-            onChange={e => setSigils(e.target.value)}
-            onBlur={handleBlur}
-            aria-invalid={!!errors.sigils}
-            aria-describedby={errors.sigils ? 'sigils-error' : undefined}
-            style={{ textTransform: 'lowercase' }}
-          />
-          {touched.sigils && errors.sigils && (
-            <div className="error-message" id="sigils-error">{errors.sigils}</div>
-          )}
-          {parsedSigils.length > 0 && (
-            <div className="live-preview">
-              <small>Live preview:</small>
-              <ul style={{ listStyle: 'none', marginLeft: 0, paddingLeft: 0 }}>
-                {parsedSigils.map((s, idx) => (
-                  <li key={idx} style={{ display: 'inline', marginRight: '0.25rem' }}>
-                    <SigilBadge
-                      sigil={s}
-                      theme={sigilThemes[s] || SIGIL_DEFAULT_THEME}
-                      lore={SIGIL_LORE[s]}
-                      onClick={() => window.open(`https://en.wikipedia.org/wiki/${s}`, '_blank')}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Collapse Risk */}
-        <div>
-          <label htmlFor="collapseRisk">Collapse Risk:</label>
-          <select
-            id="collapseRisk"
-            value={collapseRisk}
-            onChange={e => setCollapseRisk(e.target.value)}
-            className={`risk-${collapseRisk}`}
-            style={{
-              borderLeft: `6px solid ${
-                collapseRisk === 'terminal'
-                  ? '#cf4646'
-                  : collapseRisk === 'hard'
-                  ? '#ffd859'
-                  : '#5cf7b2'
-              }`,
-            }}
-          >
-            <option value="soft">Soft</option>
-            <option value="hard">Hard</option>
-            <option value="terminal">Terminal</option>
-          </select>
-        </div>
-
-        {/* Breathline */}
-        <div>
-          <label htmlFor="breathline">Breathline:</label>
-          <input
-            id="breathline"
-            type="text"
-            placeholder="Enter breathline..."
-            value={breathline}
-            onChange={e => setBreathline(e.target.value)}
-          />
-          {breathline && (
-            <div className="breathline-visual">
-              <small>Breathline:</small>
-              <div className="breathline-box">{breathline}</div>
-            </div>
-          )}
-        </div>
-
-        {/* Witness */}
-        <div>
-          <label htmlFor="witness">Witness:</label>
-          <input
-            id="witness"
-            type="text"
-            placeholder="Enter steward name or sigil..."
-            value={witness}
-            onChange={e => setWitness(e.target.value)}
-          />
-        </div>
-
-        {/* Metadata Preview */}
-        {isValid && (
-          <div className="fragment-metadata-preview">
-            <small>Metadata Preview:</small>
-            <ul>
-              <li><strong>ID:</strong> frag-{Date.now()}</li>
-              <li><strong>Timestamp:</strong> {new Date().toISOString()}</li>
-              <li><strong>Witness:</strong> {witness}</li>
-              <li><strong>Status:</strong> sealed</li>
-            </ul>
+      <div className="codex-body">
+        <div className="codex-left">
+          <EditorPanel onSubmit={addFragment} fragments={fragments} sigilThemes={{}} SIGIL_LORE={SIGIL_LORE} SIGIL_DEFAULT_THEME={SIGIL_DEFAULT_THEME} />
+          <div className="viewer-controls">
+            <input placeholder="Search text, sigils, witness..." value={filter} onChange={e => setFilter(e.target.value)} />
+            <select value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+            </select>
+            <label className="mirror-toggle">
+              <input type="checkbox" checked={mirrorMode} onChange={e => setMirrorMode(e.target.checked)} /> Mirror
+            </label>
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={!isValid}
-          style={{
-            marginTop: '1.1rem',
-            padding: '0.55rem 1.4rem',
-            fontWeight: 'bold',
-            background: isValid ? '#646cff' : '#888',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: isValid ? 'pointer' : 'not-allowed',
-            letterSpacing: '0.06em',
-            boxShadow: isValid ? '0 0 4px #646cff77' : 'none',
-            transition: 'background 0.18s',
-          }}
-        >
-          Seal Fragment
-        </button>
-      </form>
+          <FragmentList
+            fragments={filtered}
+            mirrorMode={mirrorMode}
+            onDelete={deleteFragment}
+            onEdit={startEdit}
+            onToggleReveal={toggleReveal}
+            revealMap={revealMap}
+          />
+        </div>
 
-      <button
-        onClick={handleExport}
-        className="export-button"
-        style={{
-          margin: '1.25rem 0 0 0',
-          padding: '0.3rem 1.2rem',
-          background: '#23234d',
-          color: '#91e3f6',
-          borderRadius: '6px',
-          fontWeight: 'bold',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        📜 Copy Codex
-      </button>
+        <aside className="codex-right">
+          <div className="editor-panel-right">
+            <h3>Editor</h3>
+            {editing ? (
+              <>  
+                <label>Editing Fragment</label>
+                <textarea value={editing.text} onChange={e => setEditing(prev => ({ ...prev, text: e.target.value }))} />
+                <label>Sigils</label>
+                <input value={editing.sigils} onChange={e => setEditing(prev => ({ ...prev, sigils: e.target.value }))} />
+                <div className="row">
+                  <select value={editing.collapseRisk} onChange={e => setEditing(prev => ({ ...prev, collapseRisk: e.target.value }))}>
+                    <option value="soft">Soft</option>
+                    <option value="hard">Hard</option>
+                    <option value="terminal">Terminal</option>
+                  </select>
+                  <input value={editing.breathline} onChange={e => setEditing(prev => ({ ...prev, breathline: e.target.value }))} placeholder="Breathline" />
+                </div>
+                <input value={editing.witness} onChange={e => setEditing(prev => ({ ...prev, witness: e.target.value }))} placeholder="Witness" />
+                <div className="row">
+                  <button className="btn primary" onClick={saveEdit}>Save Edit</button>
+                  <button className="btn" onClick={cancelEdit}>Cancel</button>
+                </div>
+              </>
+            ) : (
+              <div className="hint">Select a fragment to edit and record a revision</div>
+            )}  
+            <div className="utilities">
+              <button className="btn" onClick={() => setMirrorMode(m => !m)}>Toggle Mirror Mode</button>
+              <button className="btn" onClick={() => { setFilter(''); setSortOrder('newest'); }}>Reset View</button>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

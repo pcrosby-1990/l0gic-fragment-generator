@@ -1,0 +1,49 @@
+/* Basic visual theme for the codex UI. Add to your build / import from FragmentEditor.jsx */
+.codex-root { color: #e8f6ff; font-family: Inter, system-ui, sans-serif; padding: 18px; }
+.codex-header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.codex-controls { display:flex; gap:8px; align-items:center; }
+.codex-body { display:grid; grid-template-columns: 1fr 360px; gap: 16px; margin-top: 12px; }
+.codex-left { display:flex; flex-direction:column; gap: 12px; }
+.codex-right { position: sticky; top: 18px; height: fit-content; }
+
+.editor-panel { background:#071225; padding:12px; border-radius:10px; border:1px solid #162036; }
+.editor-panel label { display:block; font-size:13px; margin-top:6px; color:#aee; }
+.editor-panel textarea, .editor-panel input, .codex-right textarea, .codex-right input { width:100%; padding:8px; border-radius:6px; border:1px solid #263040; background:#0b1220; color:#e8f6ff; }
+
+.fragment-list { border:1px solid #1a1a2b; padding:8px; border-radius:8px; background:#02030a; }
+.fragment-row { display:flex; gap:12px; padding:12px; margin-bottom:10px; border-radius:8px; background:#0f1220; border:1px solid #222; align-items:flex-start; }
+.row-left { min-width:46px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.echo-icon { font-size:18px; }
+.risk-dot { width:12px; height:12px; border-radius:6px; }
+
+.row-main { flex:1; }
+.meta { color:#cfe; font-size:14px; }
+.meta-time { color:#888; font-size:12px; margin-left:8px; }
+.fragment-text { margin-top:8px; color:#e8f6ff; }
+.breathline { margin-top:8px; font-size:12px; color:#9fd; }
+.breathline-chip { background:#071; padding:2px 6px; border-radius:6px; color:#042; }
+.sigils { margin-top:8px; }
+
+.row-actions { display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:120px; }
+.btn { padding:6px 10px; background:#23234d; color:#cfe; border-radius:6px; border:none; cursor:pointer; font-size:13px; }
+.btn.primary { background:#646cff; box-shadow:0 0 6px #646cff55; }
+.btn.danger { background:#3b2b2b; color:#ffb3b3; }
+.file-btn input[type=file] { display:none; }
+
+.mirror-json { background:#061018; padding:12px; border-radius:6px; margin-bottom:8px; white-space:pre-wrap; color:#bfe; }
+.revision-details { background:#04050a; padding:10px; border-radius:6px; margin-bottom:8px; }
+.revisions .revision-item { padding:6px 8px; border-bottom:1px dashed #1b2840; margin-bottom:6px; }
+.rev-meta { font-size:12px; color:#99b; }
+.rev-text { color:#cfe; margin-top:6px; }
+
+.mi { display:flex; gap:8px; align-items:center; }
+.mi-icon { font-weight:700; }
+.mi-text { font-size:13px; color:#cfd8e3; }
+.mi-small { font-size:11px; color:#99a; }
+.viewer-controls { display:flex; gap:8px; margin-top:10px; align-items:center; }
+.viewer-controls input { flex:1; padding:8px; border-radius:8px; border:1px solid #263040; background:#071225; color:#e8f6ff; }
+
+.empty { padding:20px; color:#99a; }
+
+.hint { color:#9bb; font-size:13px; }
+.utilities { margin-top:10px; display:flex; gap:8px; flex-direction:column; }
